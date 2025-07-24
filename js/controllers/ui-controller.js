@@ -202,7 +202,11 @@ class UIController {
             const tokenElement = document.createElement('span');
             tokenElement.className = `token ${token.type}`;
             tokenElement.textContent = token.text;
-            tokenElement.title = `Tipo: ${token.type}\nTexto: "${token.text}"\nID: ${token.id}`;
+            
+            // Añadir clase visual si el ID es aproximado
+            if (token.isApproximate) {
+                tokenElement.classList.add('approximate-id');
+            }
             
             tokenElement.addEventListener('click', () => {
                 this.highlightTokenInList(token.id);
@@ -225,15 +229,50 @@ class UIController {
             return;
         }
 
-        this.elements.tokensArray.innerHTML = '';
+        // Verificar si hay tokens aproximados
+        const hasApproximateTokens = tokens.some(token => token.isApproximate);
+        
+        // Crear header con información de precisión
+        let headerHtml = '';
+        if (hasApproximateTokens) {
+            headerHtml = `
+                <div class="tokens-precision-info approximate">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>IDs Aproximados - tiktoken no disponible. Los números mostrados son estimaciones.</span>
+                </div>
+            `;
+        } else {
+            headerHtml = `
+                <div class="tokens-precision-info accurate">
+                    <i class="fas fa-check-circle"></i>
+                    <span>IDs Reales de tiktoken - Los números son precisos y reproducibles.</span>
+                </div>
+            `;
+        }
+
+        this.elements.tokensArray.innerHTML = headerHtml;
+        
         tokens.forEach((token, index) => {
             const tokenItem = document.createElement('div');
             tokenItem.className = 'token-item';
             tokenItem.id = `token-item-${token.id}`;
             
+            // Mostrar el ID numérico con indicador de precisión
+            let tokenIdDisplay = '';
+            if (token.tokenId) {
+                const idType = token.isApproximate ? '≈' : '=';
+                const idDescription = token.isApproximate ? 'Aproximado' : 'Tiktoken Real';
+                tokenIdDisplay = ` → ID ${idType} ${token.tokenId} (${idDescription})`;
+            }
+            
+            // Añadir clase si es aproximado
+            if (token.isApproximate) {
+                tokenItem.classList.add('approximate-token');
+            }
+            
             tokenItem.innerHTML = `
                 <span class="token-text">"${token.text.replace(/"/g, '&quot;')}"</span>
-                <span class="token-id">#${index + 1} (${token.type})</span>
+                <span class="token-id">#${index + 1} (${token.type})${tokenIdDisplay}</span>
             `;
 
             this.elements.tokensArray.appendChild(tokenItem);

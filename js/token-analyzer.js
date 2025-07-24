@@ -32,7 +32,7 @@ class TokenAnalyzer {
             // Activar cambio inicial de modelo para configurar la UI
             this.uiController.triggerModelChange();
 
-            console.log('✅ Analizador de Tokens inicializado correctamente');
+            console.log('Analizador de Tokens inicializado correctamente');
         } catch (error) {
             console.error('Error al inicializar el Analizador de Tokens:', error);
         }

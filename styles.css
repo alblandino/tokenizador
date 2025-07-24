@@ -376,6 +376,7 @@ body {
     transition: all 0.2s ease;
     cursor: pointer;
     animation: tokenAppear 0.3s ease;
+    position: relative;
 }
 
 @keyframes tokenAppear {
@@ -395,6 +396,7 @@ body {
     box-shadow: var(--shadow-md);
 }
 
+/* Estilos específicos para diferentes tipos de tokens */
 .token.special {
     background: var(--warning-color);
 }
@@ -407,13 +409,18 @@ body {
     background: var(--secondary-color);
 }
 
-.token.whitespace {
+.token.whitespace,
+.token.espacio_en_blanco {
     background: var(--border-color);
     color: var(--text-secondary);
 }
 
 .token.subword {
     background: var(--danger-color);
+}
+
+.token.palabra_con_espacio {
+    background: #8b5cf6;
 }
 
 .token.suffix {
@@ -425,8 +432,32 @@ body {
     font-weight: bold;
 }
 
-.token.word {
+.token.word,
+.token.palabra {
     background: var(--primary-color);
+}
+
+/* Indicador visual para IDs aproximados */
+.token.approximate-id {
+    border: 2px dashed rgba(255, 255, 255, 0.5);
+    opacity: 0.8;
+}
+
+.token.approximate-id::after {
+    content: '≈';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--warning-color);
+    color: white;
+    font-size: 0.6rem;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
 }
 
 .tokens-list h3 {
@@ -454,14 +485,15 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem;
-    margin-bottom: 0.25rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
     background: var(--bg-primary);
     border-radius: var(--radius-sm);
     font-family: 'Courier New', monospace;
     font-size: 0.875rem;
     transition: all 0.2s ease;
     animation: tokenItemAppear 0.3s ease;
+    border-left: 4px solid var(--primary-color);
 }
 
 @keyframes tokenItemAppear {
@@ -478,16 +510,71 @@ body {
 .token-item:hover {
     background: var(--bg-tertiary);
     transform: translateX(5px);
+    box-shadow: var(--shadow-sm);
 }
 
 .token-text {
     color: var(--text-primary);
     font-weight: 600;
+    flex: 1;
 }
 
 .token-id {
     color: var(--text-secondary);
     font-size: 0.75rem;
+    text-align: right;
+    min-width: fit-content;
+    margin-left: 1rem;
+    background: var(--bg-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+}
+
+/* Estilos para tokens aproximados en la lista */
+.token-item.approximate-token {
+    border-left: 4px solid var(--warning-color);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.token-item.approximate-token .token-id {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Indicador de precisión en la lista */
+.token-item.approximate-token::before {
+    content: '≈ ';
+    color: var(--warning-color);
+    font-weight: bold;
+    margin-right: 0.25rem;
+}
+
+/* Información de precisión de tokens */
+.tokens-precision-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.tokens-precision-info.accurate {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: var(--success-color);
+}
+
+.tokens-precision-info.approximate {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--warning-color);
+}
+
+.tokens-precision-info i {
+    font-size: 1rem;
 }
 
 .app-footer {
