@@ -301,48 +301,127 @@ class TokenizationService {
     fallbackTokenization(text, modelId) {
         const modelInfo = MODELS_DATA[modelId];
         
-        console.log('Usando tokenización de respaldo - IDs no serán precisos');
+        console.log('⚠️ Usando tokenización de respaldo - IDs no serán precisos');
         
-        // Tokenización base - aproximadamente 4 caracteres por token para inglés
-        let baseTokens = Math.ceil(text.length / 4);
+        // Crear tokens más realistas que simulen el comportamiento de tiktoken
+        const tokens = [];
+        let tokenIndex = 0;
         
-        // Ajustar para límites de palabras - estimación más realista
-        const words = text.split(/\s+/).filter(w => w.length > 0);
-        const avgWordLength = text.length / words.length;
+        // Dividir el texto en segmentos (palabras y espacios)
+        const segments = text.match(/\S+|\s+/g) || [];
         
-        // Aproximación más sofisticada
-        if (avgWordLength > 6) {
-            baseTokens = Math.ceil(baseTokens * 1.1); // Palabras más largas = más tokens de subpalabras
-        } else if (avgWordLength < 4) {
-            baseTokens = Math.ceil(baseTokens * 0.9); // Palabras más cortas = menos tokens
-        }
-        
-        // Aplicar multiplicadores específicos del modelo
-        let tokenCount = baseTokens;
-        if (modelInfo.tokenRatio) {
-            tokenCount = Math.round(tokenCount * modelInfo.tokenRatio);
+        for (const segment of segments) {
+            if (/\s/.test(segment)) {
+                // Es un espacio en blanco
+                tokens.push({
+                    text: segment,
+                    type: 'espacio_en_blanco',
+                    id: `token_${tokenIndex}`,
+                    tokenId: this.createDeterministicId(segment, tokenIndex),
+                    index: tokenIndex,
+                    isApproximate: true
+                });
+                tokenIndex++;
+            } else {
+                // Es una palabra - necesitamos dividirla si es muy larga
+                const wordTokens = this.splitWordIntoTokens(segment, tokenIndex);
+                tokens.push(...wordTokens);
+                tokenIndex += wordTokens.length;
+            }
         }
 
-        // Crear tokens simples para visualización con IDs consistentes (no precisos)
-        const segments = text.match(/\S+|\s+/g) || [];
-        const tokens = segments.map((segment, index) => {
-            // Crear un ID determinista basado en el contenido y posición
-            // Esto no es el ID real de tiktoken, pero será consistente
-            const deterministicId = this.createDeterministicId(segment, index);
-            
-            return {
-                text: segment,
-                type: /\s/.test(segment) ? 'espacio_en_blanco' : 
-                      /^\d+$/.test(segment) ? 'number' :
-                      /^[.,!?;:'"()\[\]{}]+$/.test(segment) ? 'punctuation' : 'palabra',
-                id: `token_${index}`,
-                tokenId: deterministicId, // ID determinista, NO el ID real de tiktoken
-                index: index,
-                isApproximate: true // Marcar como aproximado
-            };
-        });
+        // Calcular conteo de tokens basado en los tokens generados
+        const tokenCount = tokens.length;
+        
+        console.log(`📊 Tokenización de respaldo: "${text}" → ${tokenCount} tokens`);
+        console.log('🔧 Tokens generados:', tokens.map(t => `"${t.text}"`).join(' | '));
 
         return { tokens, count: tokenCount };
+    }
+
+    /**
+     * Divide una palabra en tokens más pequeños (simula comportamiento de tiktoken)
+     * @param {string} word - Palabra a dividir
+     * @param {number} startIndex - Índice inicial
+     * @returns {Array} Array de tokens
+     */
+    splitWordIntoTokens(word, startIndex) {
+        const tokens = [];
+        let currentIndex = startIndex;
+        
+        // Para palabras muy cortas (≤3 caracteres), es un solo token
+        if (word.length <= 3) {
+            tokens.push({
+                text: word,
+                type: this.determineTokenType(word),
+                id: `token_${currentIndex}`,
+                tokenId: this.createDeterministicId(word, currentIndex),
+                index: currentIndex,
+                isApproximate: true
+            });
+            return tokens;
+        }
+        
+        // Calcular división más precisa basada en la longitud
+        // Para lograr aproximadamente 1 token cada 2.8 caracteres (como tiktoken real)
+        const avgCharsPerToken = 2.8;
+        const targetTokens = Math.ceil(word.length / avgCharsPerToken);
+        const avgChunkSize = word.length / targetTokens;
+        
+        console.log(`🔍 Analizando "${word}" (${word.length} chars) → objetivo: ${targetTokens} tokens`);
+        
+        let position = 0;
+        let tokenCount = 0;
+        
+        while (position < word.length && tokenCount < targetTokens) {
+            let chunkSize;
+            
+            if (tokenCount === targetTokens - 1) {
+                // Último token: tomar todo lo que queda
+                chunkSize = word.length - position;
+            } else {
+                // Calcular tamaño dinámico basado en lo que queda
+                const remaining = word.length - position;
+                const tokensLeft = targetTokens - tokenCount;
+                chunkSize = Math.round(remaining / tokensLeft);
+                
+                // Asegurar mínimo 2 caracteres por token (excepto el último)
+                chunkSize = Math.max(2, Math.min(chunkSize, 4));
+            }
+            
+            const chunk = word.slice(position, position + chunkSize);
+            const tokenType = tokenCount === 0 ? this.determineTokenType(word) : 'subword';
+            
+            tokens.push({
+                text: chunk,
+                type: tokenType,
+                id: `token_${currentIndex}`,
+                tokenId: this.createDeterministicId(chunk, currentIndex),
+                index: currentIndex,
+                isApproximate: true
+            });
+            
+            console.log(`  Token ${tokenCount + 1}: "${chunk}" (${chunk.length} chars)`);
+            
+            position += chunkSize;
+            currentIndex++;
+            tokenCount++;
+        }
+        
+        console.log(`✅ "${word}" dividido en ${tokens.length} tokens:`, tokens.map(t => `"${t.text}"`).join(' | '));
+        return tokens;
+    }
+
+    /**
+     * Determina el tipo de token basado en su contenido
+     * @param {string} text - Texto del token
+     * @returns {string} Tipo de token
+     */
+    determineTokenType(text) {
+        if (/^\d+$/.test(text)) return 'number';
+        if (/^[.,!?;:'"()\[\]{}]+$/.test(text)) return 'punctuation';
+        if (/^[^\w\s]+$/.test(text)) return 'special';
+        return 'palabra';
     }
 
     /**
